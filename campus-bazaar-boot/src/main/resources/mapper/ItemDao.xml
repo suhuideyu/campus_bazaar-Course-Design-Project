@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    MyBatis 映射文件：商品表 SQL
+    技术点：
+    - <sql> 抽取公共 SQL 片段，<include> 复用，减少重复；
+    - <where>/<if>/<choose> 属于 MyBatis 动态 SQL，可根据查询条件拼接 SQL；
+    - 商品列表需要关联用户表和分类表，所以使用 LEFT JOIN 查展示字段。
+-->
+<mapper namespace="com.bazaar.dao.ItemDao">
+
+    <!-- 完整结果映射（含关联字段） -->
+    <resultMap id="ItemDetailMap" type="com.bazaar.domain.Item">
+        <id     property="id"             column="id"/>
+        <result property="sellerId"       column="seller_id"/>
+        <result property="categoryId"     column="category_id"/>
+        <result property="title"          column="title"/>
+        <result property="description"    column="description"/>
+        <result property="images"         column="images"/>
+        <result property="price"          column="price"/>
+        <result property="originalPrice"  column="original_price"/>
+        <result property="conditionLevel" column="condition_level"/>
+        <result property="status"         column="status"/>
+        <result property="viewCount"      column="view_count"/>
+        <result property="favCount"       column="fav_count"/>
+        <result property="createdAt"      column="created_at"/>
+        <result property="updatedAt"      column="updated_at"/>
+        <!-- 关联查询字段 -->
+        <result property="sellerNickname" column="seller_nickname"/>
+        <result property="sellerAvatar"   column="seller_avatar"/>
+        <result property="categoryName"   column="category_name"/>
+    </resultMap>
+
+    <!-- 公共列（三表联查） -->
+    <sql id="selectColumns">
+        i.id, i.seller_id, i.category_id, i.title, i.description,
+        i.images, i.price, i.original_price, i.condition_level,
+        i.status, i.view_count, i.fav_count, i.created_at, i.updated_at,
+        u.nickname AS seller_nickname,
+        u.avatar   AS seller_avatar,
+        c.name     AS category_name
+    </sql>
+
+    <!-- 公共 JOIN -->
+    <sql id="joinTables">
+        FROM cb_item i
+        LEFT JOIN cb_user     u ON i.seller_id   = u.id
+        LEFT JOIN cb_category c ON i.category_id = c.id
+    </sql>
+
+    <!-- 动态 WHERE 条件（复用于 findByCondition 和 countByCondition） -->
+    <sql id="dynamicWhere">
+        <!-- <where> 会在有条件时自动补 WHERE，并去掉开头多余的 AND -->
+        <where>
+            <if test="categoryId != null">
+                AND i.category_id = #{categoryId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND i.title LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="status != null">
+                AND i.status = #{status}
+            </if>
+            <if test="status == null and adminMode == null">
+                <!-- 默认只查询在售商品，避免未审核/下架商品出现在公开列表 -->
+                AND i.status = 1
+            </if>
+        </where>
+    </sql>
+
+    <!-- 根据 ID 查询（详情页使用） -->
+    <select id="findById" parameterType="long" resultMap="ItemDetailMap">
+        SELECT <include refid="selectColumns"/>
+        <include refid="joinTables"/>
+        WHERE i.id = #{id}
+    </select>
+
+    <!-- 动态条件分页查询 -->
+    <select id="findByCondition" parameterType="com.bazaar.vo.ItemQueryVO" resultMap="ItemDetailMap">
+        SELECT <include refid="selectColumns"/>
+        <include refid="joinTables"/>
+        <include refid="dynamicWhere"/>
+        <!-- <choose> 类似 Java 的 switch/if-else，用于选择一种排序方式 -->
+        <choose>
+            <when test="orderBy == 'price_asc'"> ORDER BY i.price ASC</when>
+            <when test="orderBy == 'price_desc'">ORDER BY i.price DESC</when>
+            <when test="orderBy == 'hottest'">   ORDER BY i.view_count DESC</when>
+            <otherwise>                          ORDER BY i.created_at DESC</otherwise>
+        </choose>
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <!-- 总记录数（分页用） -->
+    <select id="countByCondition" parameterType="com.bazaar.vo.ItemQueryVO" resultType="long">
+        SELECT COUNT(*)
+        <include refid="joinTables"/>
+        <include refid="dynamicWhere"/>
+    </select>
+
+    <!-- 卖家发布的商品 -->
+    <select id="findBySellerId" parameterType="long" resultMap="ItemDetailMap">
+        SELECT <include refid="selectColumns"/>
+        <include refid="joinTables"/>
+        WHERE i.seller_id = #{sellerId}
+        ORDER BY i.created_at DESC
+    </select>
+
+    <!-- 卖家发布的在售商品（仅status=1，公开页面使用） -->
+    <select id="findBySellerIdOnSale" parameterType="long" resultMap="ItemDetailMap">
+        SELECT <include refid="selectColumns"/>
+        <include refid="joinTables"/>
+        WHERE i.seller_id = #{sellerId} AND i.status = 1
+        ORDER BY i.created_at DESC
+    </select>
+
+    <!-- 发布新商品 -->
+    <insert id="insert" parameterType="com.bazaar.domain.Item"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO cb_item
+        (seller_id, category_id, title, description, images,
+        price, original_price, condition_level, status, created_at)
+        VALUES
+        (#{sellerId}, #{categoryId}, #{title}, #{description}, #{images},
+        #{price}, #{originalPrice}, #{conditionLevel}, #{status}, NOW())
+    </insert>
+
+    <!-- 动态更新 -->
+    <update id="update" parameterType="com.bazaar.domain.Item">
+        UPDATE cb_item
+        <!-- 只更新非 null 字段，适合“编辑商品时只提交部分字段”的场景 -->
+        <set>
+            <if test="categoryId     != null">category_id     = #{categoryId},</if>
+            <if test="title          != null">title           = #{title},</if>
+            <if test="description    != null">description     = #{description},</if>
+            <if test="images         != null">images          = #{images},</if>
+            <if test="price          != null">price           = #{price},</if>
+            <if test="originalPrice  != null">original_price  = #{originalPrice},</if>
+            <if test="conditionLevel != null">condition_level = #{conditionLevel},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE cb_item SET status = #{status} WHERE id = #{id}
+    </update>
+
+    <update id="increaseViewCount" parameterType="long">
+        UPDATE cb_item SET view_count = view_count + 1 WHERE id = #{id}
+    </update>
+
+    <update id="increaseFavCount" parameterType="long">
+        UPDATE cb_item SET fav_count = fav_count + 1 WHERE id = #{id}
+    </update>
+
+    <update id="decreaseFavCount" parameterType="long">
+        UPDATE cb_item SET fav_count = fav_count - 1 WHERE id = #{id} AND fav_count > 0
+    </update>
+
+</mapper>

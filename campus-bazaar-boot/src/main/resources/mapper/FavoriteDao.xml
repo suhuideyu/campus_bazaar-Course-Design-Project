@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    MyBatis 映射文件：收藏表 SQL
+    技术点：
+    - 收藏列表页面需要商品标题、图片、价格，所以查询时关联 cb_item；
+    - 删除收藏用 delete 标签，新增收藏用 insert 标签；
+    - existsByUserIdAndItemId 返回 COUNT(*)，Service 根据结果判断是否重复收藏。
+-->
+<mapper namespace="com.bazaar.dao.FavoriteDao">
+
+    <resultMap id="FavoriteMap" type="com.bazaar.domain.Favorite">
+        <id     property="id"          column="id"/>
+        <result property="userId"      column="user_id"/>
+        <result property="itemId"      column="item_id"/>
+        <result property="createdAt"   column="created_at"/>
+        <result property="itemTitle"   column="item_title"/>
+        <result property="itemImages"  column="item_images"/>
+        <result property="itemPrice"   column="item_price"/>
+        <result property="itemStatus"  column="item_status"/>
+    </resultMap>
+
+    <select id="findByUserId" parameterType="long" resultMap="FavoriteMap">
+        SELECT f.id, f.user_id, f.item_id, f.created_at,
+               i.title  AS item_title,
+               i.images AS item_images,
+               i.price  AS item_price,
+               i.status AS item_status
+        FROM cb_favorite f
+        LEFT JOIN cb_item i ON f.item_id = i.id
+        WHERE f.user_id = #{userId}
+        ORDER BY f.created_at DESC
+    </select>
+
+    <select id="existsByUserIdAndItemId" resultType="int">
+        SELECT COUNT(*) FROM cb_favorite
+        WHERE user_id = #{userId} AND item_id = #{itemId}
+    </select>
+
+    <insert id="insert" parameterType="com.bazaar.domain.Favorite"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO cb_favorite (user_id, item_id,created_at) VALUES (#{userId}, #{itemId}, NOW())
+    </insert>
+
+    <delete id="deleteByUserIdAndItemId">
+        DELETE FROM cb_favorite WHERE user_id = #{userId} AND item_id = #{itemId}
+    </delete>
+
+</mapper>

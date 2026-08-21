@@ -1,0 +1,22 @@
+二、本章作业
+1. 仿照 `ItemService`，完成 `UserService` 接口及其模拟实现（包含：注册、登录、根据ID查询用户）
+--实体domain（User.java）--Dao接口(UserDao.java)--Service接口(UserService.java)--‘模拟’Dao实现(UserDaoMockImpl.java)--Service实现类impl(UserServiceImpl.java)--Spring配置（userDao、userService）--测试验证（UserServiceTest.java）
+
+2. 编写 `UserServiceTest`，通过Spring容器获取Bean并测试
+
+3. **提升题**：为 `UserService.register()` 添加 AOP 切面，当注册成功时，自动打印一条欢迎消息（使用 `@AfterReturning`）
+4. **思考题**：如果把 `ItemDaoMockImpl` 换成真实的数据库实现 `ItemDaoJdbcImpl`，需要修改哪些文件？
+
+三、MyBatis 持久层开发
+表 → 实体 → 接口 → XML → 测试
+1. 写数据库表
+你截图里的 cb_order 表
+2. 写实体类（Domain/POJO）
+Order.java 对应表字段
+3. 写 DAO 接口（Mapper 接口）
+OrderDao.java 定义要执行的功能
+4. 写 Mapper XML 文件
+写真正执行的 SQL
+5. 写 JUnit 测试
+测试接口是否能正常查、增、改数据库
+

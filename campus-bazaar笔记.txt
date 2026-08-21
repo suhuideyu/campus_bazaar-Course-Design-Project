@@ -1,0 +1,69 @@
+一、准备数据库
+campus-bazaar-boot\campus_bazaar.sql
+二、运行后端
+cd campus-bazaar-boot
+mvn spring-boot:run
+三、运行前端
+cd campus-bazaar-web
+npm run dev
+
+待审核、在售、锁定、已售、下架
+
+https://i.ibb.co/PZsYG9cc/20251201103021-101-7.png
+
+全部完成。以下是本次三个功能点的改动总结：
+
+变更总结
+Function 1: ItemCard 状态角标
+文件: ItemCard.vue
+
+移除 v-if="item.status !== 1"——现在所有状态都会显示角标
+角标位置从右上角改到左上角（left: 8px）
+五种状态配色：待审核(橙)、在售(绿)、锁定(红)、已售(灰)、下架(灰)
+新增 style.css 的 .badge-orange 样式
+Function 2: 商品详情页交流区 & 评价区
+文件: ItemDetailView.vue
+
+交流区（status=1 在售 或 2 锁定）：显示留言列表（带用户头像、支持嵌套回复），底部留言输入框
+评价区（status=3 已售）：已有评价显示星级和内容 / 买家可提交 1-5 星评价（Element Plus el-rate）
+Function 3: 后端 Comment/Review API（全部新文件）
+层	文件
+Entity	Comment.java、Review.java
+DAO	CommentDao.java/xml、ReviewDao.java/xml
+Service	CommentService + impl、ReviewService + impl
+Controller	CommentController（/api/comments）、ReviewController（/api/reviews）
+已修改的后端文件：
+
+WebMvcConfig.java — 评论/评价的 GET 端点放行白名单
+已修改的前端文件：
+
+api/index.js — 新增 commentApi、reviewApi
+ItemCard.vue — 状态角标
+ItemDetailView.vue — 交流区 + 评价区
+style.css — badge-orange
+状态流转
+发布(status=0) → 管理员审核通过(status=1) → 买家预购(status=2) → 卖家确认完成(status=3)（卖家也可随时下架→status=4）
+
+变更总结
+Issue 1: 锁定商品不出现在公开页面
+文件	变更
+ItemDao.java	新增 findBySellerIdOnSale 方法
+ItemDao.xml	新增 SQL 查询，仅返回 status=1 的在售商品
+ItemService.java + impl	新增 getItemsBySellerOnSale
+ItemController.java	新增 GET /api/items/seller/{sellerId}/onsale 公开端点
+SellerItemsView.vue	改用新端点，移除前端客户端过滤
+Issue 2: 卖家"同意出售"按钮 + 买家信息
+文件	变更
+Order.java	新增 buyerSchool 字段
+OrderDao.java	新增 findByItemIdAndStatus 方法
+OrderDao.xml	新增 SQL 查询（JOIN buyer school）+ 更新 resultMap
+OrderService.java + impl	新增 getOrderByItemId（仅买家或卖家可查看）
+OrderController.java	新增 GET /api/orders/item/{itemId}
+ItemDetailView.vue	锁定商品（status=2）时：卖家看到买家信息卡片 + "同意出售"按钮；买家看到"等待卖家确认中"；其他人看到"已被预订"
+新的商品详情页状态行为
+状态	卖家看到	买家/其他人看到
+0 (待审核)	编辑 + 下架	"待审核" text
+1 (在售)	编辑 + 下架	立即预购 + 收藏
+2 (锁定)	买家信息卡 + 同意出售 + 编辑	买家："等待卖家确认中" / 其他人："已被预订"
+3 (已售)	"已售出" text	"已售出" text
+4 (下架)	编辑	"下架" text

@@ -1,0 +1,40 @@
+server:
+  # Web 服务端口，浏览器或前端请求 http://localhost:8080
+  port: 8080
+  servlet:
+    encoding:
+      # 统一请求和响应编码，避免中文参数或 JSON 出现乱码
+      charset: UTF-8
+      force: true
+
+spring:
+  application:
+    # 应用名称，日志和监控中常用来区分服务
+    name: campus-bazaar
+  profiles:
+    # 技术点：Spring Profile 用于区分开发/生产配置，当前会加载 application-dev.yml
+    active: dev   # 激活开发环境，切换为 prod 使用生产配置
+
+  jackson:
+    # 技术点：Jackson 是 Spring Boot 默认 JSON 工具，这里统一设置 Date 类型输出格式
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+mybatis:
+  # MyBatis mapper XML 文件位置，classpath 指向 src/main/resources 编译后的路径
+  mapper-locations: classpath:mapper/*.xml
+  # 类型别名包，XML 中可更简洁地引用实体类；本项目部分 XML 仍写全限定类名便于教学
+  type-aliases-package: com.bazaar.domain
+  configuration:
+    # 数据库下划线列名自动映射为 Java 驼峰属性，如 credit_score -> creditScore
+    map-underscore-to-camel-case: true
+    # 使用 SLF4J 输出 SQL 日志，日志级别在 logging.level 中控制
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+logging:
+  level:
+    # DAO 包设为 debug，开发时可以看到 MyBatis 执行 SQL 的调试信息
+    com.bazaar.dao: debug
+    com.bazaar: info
+  pattern:
+    console: "%d{HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

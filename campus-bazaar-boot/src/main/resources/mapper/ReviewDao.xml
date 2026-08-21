@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.bazaar.dao.ReviewDao">
+
+    <resultMap id="ReviewMap" type="com.bazaar.domain.Review">
+        <id     property="id"               column="id"/>
+        <result property="orderId"          column="order_id"/>
+        <result property="reviewerId"       column="reviewer_id"/>
+        <result property="revieweeId"       column="reviewee_id"/>
+        <result property="score"            column="score"/>
+        <result property="content"          column="content"/>
+        <result property="createdAt"        column="created_at"/>
+        <result property="reviewerNickname" column="reviewer_nickname"/>
+        <result property="revieweeNickname" column="reviewee_nickname"/>
+    </resultMap>
+
+    <select id="findByOrderId" resultMap="ReviewMap">
+        SELECT r.*, ru.nickname AS reviewer_nickname, eu.nickname AS reviewee_nickname
+        FROM cb_review r
+        LEFT JOIN cb_user ru ON r.reviewer_id = ru.id
+        LEFT JOIN cb_user eu ON r.reviewee_id = eu.id
+        WHERE r.order_id = #{orderId}
+    </select>
+
+    <select id="existsByOrderId" resultType="int">
+        SELECT COUNT(*) FROM cb_review WHERE order_id = #{orderId}
+    </select>
+
+    <select id="findByItemId" resultMap="ReviewMap">
+        SELECT r.*, ru.nickname AS reviewer_nickname, eu.nickname AS reviewee_nickname
+        FROM cb_review r
+        JOIN cb_order o ON r.order_id = o.id
+        LEFT JOIN cb_user ru ON r.reviewer_id = ru.id
+        LEFT JOIN cb_user eu ON r.reviewee_id = eu.id
+        WHERE o.item_id = #{itemId}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO cb_review (order_id, reviewer_id, reviewee_id, score, content, created_at)
+        VALUES (#{orderId}, #{reviewerId}, #{revieweeId}, #{score}, #{content}, NOW())
+    </insert>
+
+</mapper>

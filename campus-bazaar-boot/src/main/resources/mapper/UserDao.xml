@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    MyBatis 映射文件：用户表 SQL
+    技术点：
+    - namespace 必须对应 DAO 接口全限定名；
+    - select/insert/update 的 id 必须对应 DAO 方法名；
+    - #{xxx} 是预编译参数占位，MyBatis 会使用 PreparedStatement 防止 SQL 注入。
+-->
+<mapper namespace="com.bazaar.dao.UserDao">
+
+    <!-- resultMap 负责把数据库列映射到 Java 属性，特别适合列名和属性名不完全一致的情况 -->
+    <resultMap id="UserMap" type="com.bazaar.domain.User">
+        <id     property="id"          column="id"/>
+        <result property="username"    column="username"/>
+        <result property="password"    column="password"/>
+        <result property="nickname"    column="nickname"/>
+        <result property="avatar"      column="avatar"/>
+        <result property="phone"       column="phone"/>
+        <result property="school"      column="school"/>
+        <result property="creditScore" column="credit_score"/>
+        <result property="role"        column="role"/>
+        <result property="status"      column="status"/>
+        <result property="createdAt"   column="created_at"/>
+        <result property="updatedAt"   column="updated_at"/>
+    </resultMap>
+
+    <select id="findById" parameterType="long" resultMap="UserMap">
+        SELECT * FROM cb_user WHERE id = #{id}
+    </select>
+
+    <select id="findByUsername" parameterType="string" resultMap="UserMap">
+        SELECT * FROM cb_user WHERE username = #{username}
+    </select>
+
+    <!-- useGeneratedKeys/keyProperty：插入成功后把数据库自增主键回填到 user.id -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO cb_user (username, password, nickname, phone, school, created_at)
+        VALUES (#{username}, #{password}, #{nickname}, #{phone}, #{school}, NOW())
+    </insert>
+
+    <update id="update" parameterType="com.bazaar.domain.User">
+        UPDATE cb_user
+        <!-- <set> 会自动去掉最后多余的逗号，适合动态更新 -->
+        <set>
+            <if test="nickname != null and nickname != ''">nickname = #{nickname},</if>
+            <if test="avatar   != null and avatar   != ''">avatar   = #{avatar},</if>
+            <if test="phone    != null and phone    != ''">phone    = #{phone},</if>
+            <if test="school   != null and school   != ''">school   = #{school},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- GREATEST / LEAST 确保信用分在 [0, 200] 区间 -->
+    <update id="updateCreditScore">
+        UPDATE cb_user
+        SET credit_score = GREATEST(0, LEAST(200, credit_score + #{delta}))
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE cb_user SET status = #{status} WHERE id = #{id}
+    </update>
+
+    <select id="findAll" resultMap="UserMap">
+        SELECT * FROM cb_user ORDER BY created_at DESC LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM cb_user
+    </select>
+
+</mapper>

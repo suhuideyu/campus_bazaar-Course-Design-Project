@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    MyBatis 映射文件：分类表 SQL
+    技术点：
+    - resultType 可以直接指定实体类，适合列名和属性名能自动映射的简单查询；
+    - ORDER BY sort DESC 让分类按后台维护的 sort 值排序。
+-->
+<mapper namespace="com.bazaar.dao.CategoryDao">
+
+    <select id="findAll" resultType="com.bazaar.domain.Category">
+        SELECT id, name, icon, sort FROM cb_category ORDER BY sort DESC
+    </select>
+
+    <select id="findById" parameterType="int" resultType="com.bazaar.domain.Category">
+        SELECT id, name, icon, sort FROM cb_category WHERE id = #{id}
+    </select>
+
+</mapper>

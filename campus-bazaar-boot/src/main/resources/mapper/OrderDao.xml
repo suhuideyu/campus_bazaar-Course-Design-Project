@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    MyBatis 映射文件：订单表 SQL
+    技术点：
+    - 订单列表需要展示商品标题、买家昵称、卖家昵称，因此使用多表 LEFT JOIN；
+    - selectColumns 和 joinTables 是可复用 SQL 片段；
+    - 订单状态流转的规则不写在 XML，而是写在 OrderServiceImpl。
+-->
+<mapper namespace="com.bazaar.dao.OrderDao">
+
+    <resultMap id="OrderDetailMap" type="com.bazaar.domain.Order">
+        <id     property="id"             column="id"/>
+        <result property="orderNo"        column="order_no"/>
+        <result property="itemId"         column="item_id"/>
+        <result property="buyerId"        column="buyer_id"/>
+        <result property="sellerId"       column="seller_id"/>
+        <result property="price"          column="price"/>
+        <result property="message"        column="message"/>
+        <result property="status"         column="status"/>
+        <result property="meetPlace"      column="meet_place"/>
+        <result property="createdAt"      column="created_at"/>
+        <result property="confirmedAt"    column="confirmed_at"/>
+        <result property="finishedAt"     column="finished_at"/>
+        <!-- 关联字段 -->
+        <result property="itemTitle"      column="item_title"/>
+        <result property="itemImages"     column="item_images"/>
+        <result property="buyerNickname"  column="buyer_nickname"/>
+        <result property="buyerSchool"    column="buyer_school"/>
+        <result property="sellerNickname" column="seller_nickname"/>
+    </resultMap>
+
+    <sql id="selectColumns">
+        o.id, o.order_no, o.item_id, o.buyer_id, o.seller_id,
+        o.price, o.message, o.status, o.meet_place,
+        o.created_at, o.confirmed_at, o.finished_at,
+        i.title  AS item_title,
+        i.images AS item_images,
+        b.nickname AS buyer_nickname,
+        s.nickname AS seller_nickname
+    </sql>
+
+    <sql id="joinTables">
+        FROM cb_order o
+        LEFT JOIN cb_item i ON o.item_id   = i.id
+        LEFT JOIN cb_user b ON o.buyer_id  = b.id
+        LEFT JOIN cb_user s ON o.seller_id = s.id
+    </sql>
+
+    <select id="findById" parameterType="long" resultMap="OrderDetailMap">
+        SELECT <include refid="selectColumns"/>
+        <include refid="joinTables"/>
+        WHERE o.id = #{id}
+    </select>
+
+    <select id="findByBuyerId" parameterType="long" resultMap="OrderDetailMap">
+        SELECT <include refid="selectColumns"/>
+        <include refid="joinTables"/>
+        WHERE o.buyer_id = #{buyerId}
+        ORDER BY o.created_at DESC
+    </select>
+
+    <select id="findBySellerId" parameterType="long" resultMap="OrderDetailMap">
+        SELECT <include refid="selectColumns"/>
+        <include refid="joinTables"/>
+        WHERE o.seller_id = #{sellerId}
+        ORDER BY o.created_at DESC
+    </select>
+
+    <insert id="insert" parameterType="com.bazaar.domain.Order"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO cb_order
+        (order_no, item_id, buyer_id, seller_id, price, message, status, meet_place,created_at)
+        VALUES
+        (#{orderNo}, #{itemId}, #{buyerId}, #{sellerId}, #{price}, #{message}, #{status}, #{meetPlace}, NOW())
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE cb_order SET status = #{status} WHERE id = #{id}
+    </update>
+
+    <select id="findByItemIdAndStatus" resultMap="OrderDetailMap">
+        SELECT o.id, o.order_no, o.item_id, o.buyer_id, o.seller_id,
+               o.price, o.message, o.status, o.meet_place,
+               o.created_at, o.confirmed_at, o.finished_at,
+               i.title  AS item_title,
+               i.images AS item_images,
+               b.nickname AS buyer_nickname,
+               b.school   AS buyer_school,
+               s.nickname AS seller_nickname
+        FROM cb_order o
+        LEFT JOIN cb_item i ON o.item_id   = i.id
+        LEFT JOIN cb_user b ON o.buyer_id  = b.id
+        LEFT JOIN cb_user s ON o.seller_id = s.id
+        WHERE o.item_id = #{itemId} AND o.status = #{status}
+        ORDER BY o.created_at DESC
+        LIMIT 1
+    </select>
+
+</mapper>
